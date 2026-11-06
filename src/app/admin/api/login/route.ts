@@ -1,12 +1,22 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { createAdminSession } from "@/lib/admin-auth";
+import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase-admin";
+import { createAdminSession, isAdminAuthConfigured } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  if (!isSupabaseConfigured() || !isAdminAuthConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Admin sign-in is not configured yet. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and ADMIN_SESSION_SECRET.",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
 

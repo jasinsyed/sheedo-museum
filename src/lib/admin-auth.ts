@@ -2,13 +2,27 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const secretValue = process.env.ADMIN_SESSION_SECRET;
-
-if (!secretValue || Buffer.byteLength(secretValue) < 32) {
-  throw new Error("ADMIN_SESSION_SECRET must be at least 32 bytes.");
+export function isAdminAuthConfigured(): boolean {
+  const value = process.env.ADMIN_SESSION_SECRET;
+  return Boolean(value && Buffer.byteLength(value) >= 32);
 }
 
-const secret = new TextEncoder().encode(secretValue);
+let cachedSecret: Uint8Array | null = null;
+
+// Resolved lazily so that importing this module (e.g. during `next build`
+// page-data collection) does not require the secret to be present.
+function getSecret(): Uint8Array {
+  if (cachedSecret) return cachedSecret;
+
+  const secretValue = process.env.ADMIN_SESSION_SECRET;
+
+  if (!secretValue || Buffer.byteLength(secretValue) < 32) {
+    throw new Error("ADMIN_SESSION_SECRET must be at least 32 bytes.");
+  }
+
+  cachedSecret = new TextEncoder().encode(secretValue);
+  return cachedSecret;
+}
 
 export const SESSION_COOKIE = "sheedo_admin_session";
 
@@ -20,7 +34,7 @@ export async function createAdminSession(adminId: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("8h")
-    .sign(secret);
+    .sign(getSecret());
 
   const cookieStore = await cookies();
 
@@ -37,7 +51,9 @@ export async function getAdminSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-  if (!token) return null;
+  if (!token || !isAdminAuthConfigured()) return null;
+
+  const secret = getSecret();
 
   try {
     const { payload } = await jwtVerify(token, secret, {

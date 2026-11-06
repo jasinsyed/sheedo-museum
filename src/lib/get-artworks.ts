@@ -1,10 +1,47 @@
 
 import "server-only";
 
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase-admin";
 import type { Artwork } from "@/types/artwork";
 
+// PLACEHOLDER: sample artworks shown only while Supabase is not configured
+// (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY unset). Real data takes over
+// automatically once those variables are set.
+const SAMPLE_ARTWORKS: Artwork[] = [
+  {
+    id: "sample-basra",
+    title: "Basra (Sample)",
+    artist: "Sheedo",
+    year: "2024",
+    medium: "Sample artwork",
+    collection: "Sample Collection",
+    image: "/images/basra.jpg",
+    description:
+      "Placeholder entry shown until the museum collection database is connected.",
+    featured: true,
+  },
+  {
+    id: "sample-nature",
+    title: "Nature (Sample)",
+    artist: "Sheedo",
+    year: "2024",
+    medium: "Sample artwork",
+    collection: "Sample Collection",
+    image: "/images/nature.png",
+    description:
+      "Placeholder entry shown until the museum collection database is connected.",
+    featured: false,
+  },
+];
+
 export async function getArtworks(): Promise<Artwork[]> {
+  if (!isSupabaseConfigured()) {
+    console.warn(
+      "Supabase is not configured; serving sample artworks. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+    );
+    return SAMPLE_ARTWORKS;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("artworks")
     .select(
